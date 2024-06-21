@@ -1,0 +1,75 @@
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import HTMLResponse
+
+app = FastAPI()
+
+# HTML para el chat
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>WebSocket Chat</h1>
+        <form action="" onsubmit="sendMessage(event)">
+            <input type="text" id="messageText" autocomplete="off"/>
+            <button>Enviar</button>
+        </form>
+        <ul id='messages'>Mensajes
+        </ul>
+        <script>
+            var ws = new WebSocket("ws://localhost:8000/ws");
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+            function sendMessage(event) {
+                var input = document.getElementById("messageText")
+                ws.send(input.value)
+                input.value = ''
+                event.preventDefault()
+            }
+        </script>
+    </body>
+</html>
+"""
+
+@app.get("/")
+async def get():
+    return HTMLResponse(html)
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_text()
+        await websocket.send_text(f"Mensaje recibido: {data}")
+
+
+
+
+
+# Utilizar una imagen base oficial de Python
+FROM python:3.9-slim
+
+# Establecer el directorio de trabajo dentro del contenedor
+WORKDIR /app
+
+# Copiar el archivo requirements.txt al directorio de trabajo
+COPY requirements.txt .
+
+# Instalar las dependencias necesarias
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar el resto del código de la aplicación al directorio de trabajo
+COPY . .
+
+# Exponer el puerto en el que correrá la aplicación (ajustar según sea necesario)
+EXPOSE 8000
+
+# Comando para ejecutar la aplicación (ajustar según sea necesario)
+CMD ["python", "app.py"]
